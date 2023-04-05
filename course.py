@@ -3,40 +3,40 @@ import json
 from tqdm import tqdm
 import datetime as dt
 import time
-import configparser
 from settings import token_ya, token_vk
 
 class VK:
     
     
-    def __init__(self, token, version, user_ids, count = 5):
+    def __init__(self, access_token, version, user_ids, count = 5):
+        self.access_token = access_token
+        self.version = version
         self.user_ids = user_ids
         self.count = count
-        self.params = {
-            'access_token': token,
-            'v': version
-        }
 
 
-    def get_user(self, user_ids):
-        get_user_url = 'https://api.vk.com/method/users.get'
+    def get_user(self):
+        url = 'https://api.vk.com/method/users.get'
         get_user_params = {
-            'user_ids': user_ids
+            'user_ids': self.user_ids,
+            'access_token': self.access_token,
+            'version': self.version,
+            'count': self.count
         }
-        user_info = requests.get(get_user_url, params={**self.params, **get_user_params}).json()
-        return user_info
+        response = requests.get(url, get_user_params)
+        json_response = response.json()
+        return json_response
 
     
     def get_photo(self):
         url = 'https://api.vk.com/method/photos.get'
         params = {
-            'owner_id': self.user_ids,
             'album_id': 'profile',
             'photo_sizes': '1',
             'extended': '1',
             'count': self.count
         }
-        res = requests.get(url, params={**self.params, **params}).json()
+        res = requests.get(url, params).json()
         return res
 
 
@@ -58,7 +58,7 @@ class YandexDisk:
     def _get_upload_link(self, path):
         upload_url = "https://cloud-api.yandex.net/v1/disk/resources/upload"
         params = {"path": path, "overwrite": "true"}
-        response = requests.get(upload_url, headers=self.get_headers, params=params)
+        response = requests.get(upload_url, headers=self.get_headers(), params=params)
         return response.json()['href']
     
 
@@ -98,17 +98,13 @@ class YandexDisk:
     
 
 class Main:
-    def save_photo(user_ids, count):
-    # config = configparser.ConfigParser()
-    # config.read('settings.ini')
-    # token_vk = config['api']['token_vk']
-    # token_ya = config['api']['token_ya']
+    def save_photo(self, user_ids, count):
         res = VK(token_vk, 5.131, user_ids, count).get_photo()
         list_photos = []
         list_likes = []
         time.sleep(0.3)
         date_photo = dt.date.today().strftime('%d.%m.%Y')
-
+        print(res)
         for foto in res['response']['items']:
             
             if foto['likes']['count'] in list_likes:
@@ -128,11 +124,11 @@ class Main:
                     }
                 )
                 list_likes.append(foto['likes']['count'])
-            return list_photos
+        return list_photos
     
 
 if __name__ == '__main__':
     user_id = input('Введите id пользователя\n')
     count_photos = input('Введите количество скачиваемых фото\n')
-    YandexDisk.upload(token_ya, Main.save_photo(user_id, count_photos))
+    YandexDisk.upload(token_ya, Main().save_photo(user_id, count_photos))
 # '473860275'
